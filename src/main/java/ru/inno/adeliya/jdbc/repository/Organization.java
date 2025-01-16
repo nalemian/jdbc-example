@@ -1,28 +1,28 @@
 package ru.inno.adeliya.jdbc.repository;
 
-import ru.inno.adeliya.jdbc.entity.DepartmentEntity;
+import ru.inno.adeliya.jdbc.entity.OrganizationEntity;
 
 import java.sql.*;
 
-public class Department implements EntityRepository<DepartmentEntity> {
+public class Organization implements EntityRepository<OrganizationEntity> {
     private final String url;
     private final String username;
     private final String password;
 
-    public Department(String url, String username, String password) {
+    public Organization(String url, String username, String password) {
         this.url = url;
         this.username = username;
         this.password = password;
     }
 
     @Override
-    public DepartmentEntity save(DepartmentEntity input) throws SQLException {
+    public OrganizationEntity save(OrganizationEntity input) throws SQLException {
         try (Connection connection = DriverManager.getConnection(url, username, password);
              Statement statement = connection.createStatement()) {
             if (input.getId() == 0) {
                 String command = String.format(
-                        "INSERT INTO department (organization, name) VALUES (%d, '%s') RETURNING id;",
-                        input.getOrganization(), input.getName());
+                        "INSERT INTO organization (name, tax_number) VALUES ('%s', %d) RETURNING id;",
+                        input.getName(), input.getTax_number());
                 try (ResultSet resultSet = statement.executeQuery(command)) {
                     if (resultSet.next()) {
                         input.setId(resultSet.getInt(1));
@@ -30,8 +30,8 @@ public class Department implements EntityRepository<DepartmentEntity> {
                 }
             } else {
                 String command = String.format(
-                        "UPDATE department SET organization = %d, name = '%s' WHERE id = %d;",
-                        input.getOrganization(), input.getName(), input.getId());
+                        "UPDATE organization SET name = '%s', tax_number = %d WHERE id = %d;",
+                        input.getName(), input.getTax_number(), input.getId());
                 statement.executeUpdate(command);
             }
             return input;
@@ -39,16 +39,16 @@ public class Department implements EntityRepository<DepartmentEntity> {
     }
 
     @Override
-    public DepartmentEntity read(int id) throws SQLException {
-        String command = String.format("SELECT id, organization, name FROM department WHERE id = %d;", id);
+    public OrganizationEntity read(int id) throws SQLException {
+        String command = String.format("SELECT id, name, tax_number FROM organization WHERE id = %d;", id);
         try (Connection connection = DriverManager.getConnection(url, username, password);
              Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(command)) {
             if (resultSet.next()) {
-                return new DepartmentEntity(
+                return new OrganizationEntity(
                         resultSet.getInt("id"),
-                        resultSet.getInt("organization"),
-                        resultSet.getString("name")
+                        resultSet.getString("name"),
+                        resultSet.getInt("tax_number")
                 );
             } else {
                 return null;
@@ -58,7 +58,7 @@ public class Department implements EntityRepository<DepartmentEntity> {
 
     @Override
     public void delete(int id) throws SQLException {
-        String command = String.format("DELETE FROM department WHERE id = %d;", id);
+        String command = String.format("DELETE FROM organization WHERE id = %d;", id);
         try (Connection connection = DriverManager.getConnection(url, username, password);
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(command);
