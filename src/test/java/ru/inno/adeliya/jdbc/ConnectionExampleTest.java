@@ -1,6 +1,12 @@
 package ru.inno.adeliya.jdbc;
 
 import org.junit.jupiter.api.Test;
+import ru.inno.adeliya.jdbc.entity.DepartmentEntity;
+import ru.inno.adeliya.jdbc.entity.EmployeeEntity;
+import ru.inno.adeliya.jdbc.entity.OrganizationEntity;
+import ru.inno.adeliya.jdbc.repository.DepartmentRepository;
+import ru.inno.adeliya.jdbc.repository.EmployeeRepository;
+import ru.inno.adeliya.jdbc.repository.OrganizationRepository;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -51,6 +57,32 @@ class ConnectionExampleTest {
                 }
             }
         }
+    }
+
+    @Test
+    void testRepositories() throws SQLException {
+        var connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "user", "password");
+        DepartmentRepository departmentRepository = new DepartmentRepository(connection);
+        EmployeeRepository employeeRepository = new EmployeeRepository(connection);
+        OrganizationRepository organizationRepository = new OrganizationRepository(connection);
+        OrganizationEntity organization = new OrganizationEntity(0, "ООО ООО", 123);
+        organization = organizationRepository.save(organization);
+        System.out.println(organization);
+        DepartmentEntity department = new DepartmentEntity(0, organization.getId(), "новый отдел");
+        department = departmentRepository.save(department);
+        System.out.println(department);
+        EmployeeEntity employee = new EmployeeEntity(0, "Орландо Блум", 600000, department.getId());
+        employee = employeeRepository.save(employee);
+        System.out.println(employee);
+        System.out.println(organizationRepository.read(organization.getId()));
+        System.out.println(departmentRepository.read(department.getId()));
+        System.out.println(employeeRepository.read(employee.getId()));
+        employee.setSalary(700000);
+        employeeRepository.save(employee);
+        System.out.println(employee);
+        employeeRepository.delete(employee.getId());
+        departmentRepository.delete(department.getId());
+        organizationRepository.delete(organization.getId());
     }
 
 }

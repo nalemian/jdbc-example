@@ -13,5 +13,5 @@ public interface EntityRepository<T> {
      */
     T save(T input) throws SQLException;
     T read(int id) throws SQLException;
-    void delete(int id) throws SQLException ;
+    void delete(int id) throws SQLException;
 }
