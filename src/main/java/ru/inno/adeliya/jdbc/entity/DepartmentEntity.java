@@ -3,9 +3,14 @@ package ru.inno.adeliya.jdbc.entity;
 /**
  * Сущность таблицы department
  */
+
+@Table(name = "department")
 public class DepartmentEntity {
+    @Column(name = "id")
     private int id;
+    @Column(name = "organization")
     private int organization;
+    @Column(name = "name")
     private String name;
 
     public DepartmentEntity(int id, int organization, String name) {

@@ -1,8 +1,12 @@
 package ru.inno.adeliya.jdbc.entity;
 
+@Table(name = "organization")
 public class OrganizationEntity {
+    @Column(name = "id")
     private int id;
+    @Column(name = "name")
     private String name;
+    @Column(name = "tax_number")
     private int tax_number;
 
     public OrganizationEntity(int id, String name, int tax_number) {

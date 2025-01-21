@@ -1,7 +1,11 @@
 package ru.inno.adeliya.jdbc.repository;
 
+import ru.inno.adeliya.jdbc.entity.Column;
+import ru.inno.adeliya.jdbc.entity.DepartmentEntity;
 import ru.inno.adeliya.jdbc.entity.EmployeeEntity;
+import ru.inno.adeliya.jdbc.entity.Table;
 
+import java.lang.reflect.Field;
 import java.sql.*;
 
 public class EmployeeRepository extends AbstractRepository<EmployeeEntity> {
@@ -12,27 +16,76 @@ public class EmployeeRepository extends AbstractRepository<EmployeeEntity> {
 
     @Override
     public String getInsertQuery(EmployeeEntity entity) {
+        StringBuilder columns = new StringBuilder();
+        StringBuilder values = new StringBuilder();
+        Field[] fields = EmployeeEntity.class.getDeclaredFields();
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(Column.class)) {
+                field.setAccessible(true);
+                try {
+                    String columnName = field.getAnnotation(Column.class).name();
+                    columns.append(columnName).append(", ");
+                    values.append("'").append(field.get(entity)).append("', ");
+                } catch (IllegalAccessException e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+        }
+        columns.setLength(columns.length() - 2);
+        values.setLength(values.length() - 2);
         return String.format(
-                "INSERT INTO employee (name, salary, department) VALUES ('%s', %d, %d) RETURNING id;",
-                entity.getName(), entity.getSalary(), entity.getDepartment()
+                "INSERT INTO %s (%s) VALUES (%s) RETURNING id;",
+                EmployeeEntity.class.getAnnotation(Table.class).name(),
+                columns,
+                values
         );
     }
 
     @Override
     public String getUpdateQuery(EmployeeEntity entity) {
+        StringBuilder newValues = new StringBuilder();
+        String condition = null;
+        Field[] fields = EmployeeEntity.class.getDeclaredFields();
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(Column.class)) {
+                field.setAccessible(true);
+                try {
+                    String columnName = field.getAnnotation(Column.class).name();
+                    Object fieldValue = field.get(entity);
+                    if (columnName.equals("id")) {
+                        condition = "id = " + fieldValue;
+                    } else {
+                        newValues.append(columnName).append(" = '").append(fieldValue).append("', ");
+                    }
+                } catch (IllegalAccessException e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+        }
+        newValues.setLength(newValues.length() - 2);
         return String.format(
-                "UPDATE employee SET name = '%s', salary = %d, department = %d WHERE id = %d;",
-                entity.getName(), entity.getSalary(), entity.getDepartment(), entity.getId()
+                "UPDATE %s SET %s WHERE %s;",
+                EmployeeEntity.class.getAnnotation(Table.class).name(),
+                newValues,
+                condition
         );
     }
     @Override
     public String getSelectQuery(int id) {
-        return String.format("SELECT id, name, salary, department FROM employee WHERE id = %d;", id);
+        return String.format(
+                "SELECT * FROM %s WHERE id = %d;",
+                EmployeeEntity.class.getAnnotation(Table.class).name(),
+                id
+        );
     }
 
     @Override
     public String getDeleteQuery(int id) {
-        return String.format("DELETE FROM employee WHERE id = %d;", id);
+        return String.format(
+                "DELETE FROM %s WHERE id = %d;",
+                EmployeeEntity.class.getAnnotation(Table.class).name(),
+                id
+        );
     }
 
     @Override

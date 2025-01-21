@@ -1,9 +1,14 @@
 package ru.inno.adeliya.jdbc.entity;
 
+@Table(name = "employee")
 public class EmployeeEntity {
+    @Column(name = "id")
     private int id;
+    @Column(name = "name")
     private String name;
+    @Column(name = "salary")
     private int salary;
+    @Column(name = "department")
     private int department;
 
     public EmployeeEntity(int id, String name, int salary, int department) {
