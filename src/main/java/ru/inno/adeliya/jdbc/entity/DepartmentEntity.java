@@ -1,5 +1,8 @@
 package ru.inno.adeliya.jdbc.entity;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 /**
  * Сущность таблицы department
  */
@@ -17,6 +20,12 @@ public class DepartmentEntity {
         this.id = id;
         this.organization = organization;
         this.name = name;
+    }
+
+    public DepartmentEntity(ResultSet resultSet) throws SQLException {
+        this.id = resultSet.getInt("id");
+        this.organization = resultSet.getInt("organization");
+        this.name = resultSet.getString("name");
     }
 
     public int getId() {

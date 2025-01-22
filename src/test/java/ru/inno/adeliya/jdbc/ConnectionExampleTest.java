@@ -84,5 +84,4 @@ class ConnectionExampleTest {
         departmentRepository.delete(department.getId());
         organizationRepository.delete(organization.getId());
     }
-
 }

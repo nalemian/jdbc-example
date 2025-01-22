@@ -1,5 +1,8 @@
 package ru.inno.adeliya.jdbc.entity;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 @Table(name = "employee")
 public class EmployeeEntity {
     @Column(name = "id")
@@ -16,6 +19,13 @@ public class EmployeeEntity {
         this.name = name;
         this.salary = salary;
         this.department = department;
+    }
+
+    public EmployeeEntity(ResultSet resultSet) throws SQLException {
+        this.id = resultSet.getInt("id");
+        this.name = resultSet.getString("name");
+        this.salary = resultSet.getInt("salary");
+        this.department = resultSet.getInt("department");
     }
 
     public int getId() {
