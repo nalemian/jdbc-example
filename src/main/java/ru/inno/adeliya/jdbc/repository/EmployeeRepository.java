@@ -1,13 +1,12 @@
 package ru.inno.adeliya.jdbc.repository;
 
+import ru.inno.adeliya.jdbc.config.ConnectionProvider;
 import ru.inno.adeliya.jdbc.entity.EmployeeEntity;
-
-import java.sql.Connection;
 
 public class EmployeeRepository extends AbstractRepository<EmployeeEntity> {
 
-    public EmployeeRepository(Connection connection) {
-        super(connection);
+    public EmployeeRepository(ConnectionProvider connectionProvider) {
+        super(connectionProvider);
     }
 
     @Override

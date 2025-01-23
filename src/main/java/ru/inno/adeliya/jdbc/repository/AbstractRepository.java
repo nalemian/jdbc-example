@@ -1,24 +1,24 @@
 package ru.inno.adeliya.jdbc.repository;
 
+import ru.inno.adeliya.jdbc.config.ConnectionProvider;
 import ru.inno.adeliya.jdbc.entity.Column;
 import ru.inno.adeliya.jdbc.entity.Table;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 public abstract class AbstractRepository<T> implements EntityRepository<T> {
 
-    private final Connection connection;
+    private final ConnectionProvider connectionProvider;
     private final String tableName;
     private final Class<T> entityClass;
 
-    public AbstractRepository(Connection connection) {
-        this.connection = connection;
+    public AbstractRepository(ConnectionProvider connectionProvider) {
+        this.connectionProvider = connectionProvider;
         this.entityClass = (Class<T>) ((ParameterizedType) getClass()
                 .getGenericSuperclass()).getActualTypeArguments()[0];
         this.tableName = entityClass.getAnnotation(Table.class).name();
@@ -110,7 +110,7 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
 
     @Override
     public T save(T entity) throws SQLException {
-        try (Statement statement = connection.createStatement()) {
+        try (Statement statement = connectionProvider.getConnection().createStatement()) {
             if (isNew(entity)) {
                 String command = getInsertQuery(entity);
                 try (ResultSet resultSet = statement.executeQuery(command)) {
@@ -129,7 +129,7 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
     @Override
     public T read(int id) throws SQLException {
         String command = getSelectQuery(id);
-        try (Statement statement = connection.createStatement();
+        try (Statement statement = connectionProvider.getConnection().createStatement();
              ResultSet resultSet = statement.executeQuery(command)) {
             if (resultSet.next()) {
                 return readResultSet(resultSet);
@@ -142,7 +142,7 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
     @Override
     public void delete(int id) throws SQLException {
         String command = getDeleteQuery(id);
-        try (Statement statement = connection.createStatement()) {
+        try (Statement statement = connectionProvider.getConnection().createStatement()) {
             statement.executeUpdate(command);
         }
     }

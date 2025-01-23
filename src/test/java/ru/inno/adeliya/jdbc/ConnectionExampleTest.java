@@ -1,6 +1,9 @@
 package ru.inno.adeliya.jdbc;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.inno.adeliya.jdbc.config.ConnectionProvider;
+import ru.inno.adeliya.jdbc.config.DirectConnectionProvider;
 import ru.inno.adeliya.jdbc.entity.DepartmentEntity;
 import ru.inno.adeliya.jdbc.entity.EmployeeEntity;
 import ru.inno.adeliya.jdbc.entity.OrganizationEntity;
@@ -8,13 +11,21 @@ import ru.inno.adeliya.jdbc.repository.DepartmentRepository;
 import ru.inno.adeliya.jdbc.repository.EmployeeRepository;
 import ru.inno.adeliya.jdbc.repository.OrganizationRepository;
 
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
 class ConnectionExampleTest {
+
+    private ConnectionProvider connectionProvider;
+
+    @BeforeEach
+    void setUp() {
+        this.connectionProvider = new DirectConnectionProvider(
+                "jdbc:postgresql://localhost:5432/postgres", "user", "password");
+    }
+
     @Test
     void printAllTableValues() throws SQLException {
-        var connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "user", "password");
+        var connection = connectionProvider.getConnection();
         String select = "SELECT * from \"adeliya-learn\".department";
         var result = connection.createStatement().executeQuery(select);
         while (result.next()) {
@@ -27,7 +38,7 @@ class ConnectionExampleTest {
 
     @Test
     void insertNewValuesIntoTable() throws SQLException {
-        var connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "user", "password");
+        var connection = connectionProvider.getConnection();
         String insert = "INSERT INTO \"adeliya-learn\".department (id, organization, name)\n" +
                 "VALUES (?, ?, ?)\n" +
                 "ON CONFLICT (id) DO UPDATE SET\n" +
@@ -61,10 +72,9 @@ class ConnectionExampleTest {
 
     @Test
     void testRepositories() throws SQLException {
-        var connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "user", "password");
-        DepartmentRepository departmentRepository = new DepartmentRepository(connection);
-        EmployeeRepository employeeRepository = new EmployeeRepository(connection);
-        OrganizationRepository organizationRepository = new OrganizationRepository(connection);
+        DepartmentRepository departmentRepository = new DepartmentRepository(connectionProvider);
+        EmployeeRepository employeeRepository = new EmployeeRepository(connectionProvider);
+        OrganizationRepository organizationRepository = new OrganizationRepository(connectionProvider);
         OrganizationEntity organization = new OrganizationEntity(0, "ООО ООО", 123);
         organization = organizationRepository.save(organization);
         System.out.println(organization);

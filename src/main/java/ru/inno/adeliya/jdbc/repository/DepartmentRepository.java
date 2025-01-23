@@ -1,13 +1,12 @@
 package ru.inno.adeliya.jdbc.repository;
 
+import ru.inno.adeliya.jdbc.config.ConnectionProvider;
 import ru.inno.adeliya.jdbc.entity.DepartmentEntity;
-
-import java.sql.Connection;
 
 public class DepartmentRepository extends AbstractRepository<DepartmentEntity> {
 
-    public DepartmentRepository(Connection connection) {
-        super(connection);
+    public DepartmentRepository(ConnectionProvider connectionProvider) {
+        super(connectionProvider);
     }
 
     @Override
