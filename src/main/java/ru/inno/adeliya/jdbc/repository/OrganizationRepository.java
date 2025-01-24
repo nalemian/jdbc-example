@@ -1,12 +1,12 @@
 package ru.inno.adeliya.jdbc.repository;
 
+import ru.inno.adeliya.jdbc.config.ConnectionProvider;
 import ru.inno.adeliya.jdbc.entity.OrganizationEntity;
 
-import java.sql.Connection;
-
 public class OrganizationRepository extends AbstractRepository<OrganizationEntity> {
-    public OrganizationRepository(Connection connection) {
-        super(connection);
+
+    public OrganizationRepository(ConnectionProvider connectionProvider) {
+        super(connectionProvider);
     }
 
     @Override
