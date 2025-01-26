@@ -34,6 +34,9 @@ public class TestcontainersIntegrationTest {
     void setUp() {
         connectionProvider = new DirectConnectionProvider(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
         createCustomersTableIfNotExists();
+        createEmployeeTableIfNotExists();
+        createOrganizationTableIfNotExists();
+        createDepartmentTableIfNotExists();
     }
 
     @Test
@@ -49,6 +52,64 @@ public class TestcontainersIntegrationTest {
                             create table if not exists customers (
                                 id bigint not null,
                                 name varchar not null,
+                                primary key (id)
+                            )
+                            """
+            );
+            pstmt.execute();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void createEmployeeTableIfNotExists() {
+        try (Connection conn = this.connectionProvider.getConnection()) {
+            PreparedStatement pstmt = conn.prepareStatement(
+                    """
+                            create table if not exists employee (
+                                id bigint not null,
+                                name varchar,
+                                salary bigint,
+                                department bigint,
+                                primary key (id)
+                            )
+                            """
+            );
+            pstmt.execute();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void createOrganizationTableIfNotExists() {
+        try (Connection conn = this.connectionProvider.getConnection()) {
+            PreparedStatement pstmt = conn.prepareStatement(
+                    """
+                            create table if not exists organization (
+                                id bigint not null,
+                                name varchar,
+                                tax_number integer not null,
+                                primary key (id)
+                            )
+                            """
+            );
+            pstmt.execute();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void createDepartmentTableIfNotExists() {
+        try (Connection conn = this.connectionProvider.getConnection()) {
+            PreparedStatement pstmt = conn.prepareStatement(
+                    """
+                            create table if not exists department (
+                                id bigint not null,
+                                organization bigint
+                                    constraint organization_fk
+                                            references organization
+                                            on delete restrict,
+                                name varchar,
                                 primary key (id)
                             )
                             """
