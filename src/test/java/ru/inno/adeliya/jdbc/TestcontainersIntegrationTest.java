@@ -13,6 +13,7 @@ import ru.inno.adeliya.jdbc.repository.DepartmentRepository;
 import ru.inno.adeliya.jdbc.repository.EmployeeRepository;
 import ru.inno.adeliya.jdbc.repository.OrganizationRepository;
 
+import java.io.IOException;
 import java.sql.*;
 
 public class TestcontainersIntegrationTest {
@@ -41,7 +42,8 @@ public class TestcontainersIntegrationTest {
 
     @Test
     void insertALotOfData() {
-        try (Connection connection = DriverManager.getConnection(
+        try (
+                Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(),
                 postgres.getUsername(),
                 postgres.getPassword()
@@ -51,13 +53,16 @@ public class TestcontainersIntegrationTest {
             EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection);
 
             for (int i = 1; i <= 5; i++) {
-                OrganizationEntity org = new OrganizationEntity(i+10, "Организация " + i, 124 + i);
+                OrganizationEntity org = new OrganizationEntity(i+1, "Организация " + i, 124 + i);
                 org = organizationRepository.save(org);
+                //postgres.execInContainer(organizationRepository.getInsertQuery(org));
+                //System.out.println(org.getName());
+                //System.out.println(organizationRepository.getInsertQuery(org));
                 for (int j = 1; j <= 10; j++) {
-                    DepartmentEntity dept = new DepartmentEntity(j+10,org.getId(), "Отдел " + j);
+                    DepartmentEntity dept = new DepartmentEntity(j+1,org.getId(), "Отдел " + j);
                     dept = departmentRepository.save(dept);
                     for (int k = 1; k <= 100; k++) {
-                        EmployeeEntity emp = new EmployeeEntity(k+10, "Сотрудник " + k, 10000 + (k * 10), dept.getId());
+                        EmployeeEntity emp = new EmployeeEntity(k+1, "Сотрудник " + k, 10000 + (k * 10), dept.getId());
                         employeeRepository.save(emp);
                     }
                 }
@@ -81,8 +86,9 @@ public class TestcontainersIntegrationTest {
                 }
             }
             try (Statement statement = connection.createStatement();
-                 ResultSet resultSet = statement.executeQuery("SELECT * FROM employee ORDER BY id LIMIT 5 OFFSET 5")) {
+                 ResultSet resultSet = statement.executeQuery("SELECT * FROM employee")) {
                 while (resultSet.next()) {
+                    //System.out.println(12);
                     System.out.println(
                             "ID: " + resultSet.getInt("id") +
                                     ", name: " + resultSet.getString("name") +
