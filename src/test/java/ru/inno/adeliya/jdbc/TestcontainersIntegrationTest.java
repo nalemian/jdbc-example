@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import ru.inno.adeliya.jdbc.entity.DepartmentEntity;
 import ru.inno.adeliya.jdbc.entity.EmployeeEntity;
 import ru.inno.adeliya.jdbc.entity.OrganizationEntity;
@@ -13,22 +14,26 @@ import ru.inno.adeliya.jdbc.repository.DepartmentRepository;
 import ru.inno.adeliya.jdbc.repository.EmployeeRepository;
 import ru.inno.adeliya.jdbc.repository.OrganizationRepository;
 
-import java.io.IOException;
 import java.sql.*;
 
 public class TestcontainersIntegrationTest {
 
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
             "postgres:16-alpine"
-    );
+    ).withLogConsumer(outputFrame -> System.out.println(outputFrame.getUtf8String())).waitingFor(Wait.forListeningPort()).withExposedPorts(5432);
 
     @BeforeAll
     static void beforeAll() {
         postgres.start();
+        System.out.println("Mapped port: " + postgres.getMappedPort(5432));
+        System.out.println("URL: " + postgres.getJdbcUrl());
+        System.out.println("Username: " + postgres.getUsername());
+        System.out.println("Password: " + postgres.getPassword());
     }
 
     @AfterAll
     static void afterAll() {
+        System.out.println(postgres.getLogs());
         postgres.stop();
     }
 
@@ -48,6 +53,8 @@ public class TestcontainersIntegrationTest {
                 postgres.getUsername(),
                 postgres.getPassword()
         )) {
+            System.out.println(1);
+            connection.setAutoCommit(false);
             OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection);
             DepartmentRepository departmentRepository = new DepartmentRepository(() -> connection);
             EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection);
@@ -55,9 +62,7 @@ public class TestcontainersIntegrationTest {
             for (int i = 1; i <= 5; i++) {
                 OrganizationEntity org = new OrganizationEntity(i+1, "Организация " + i, 124 + i);
                 org = organizationRepository.save(org);
-                //postgres.execInContainer(organizationRepository.getInsertQuery(org));
-                //System.out.println(org.getName());
-                //System.out.println(organizationRepository.getInsertQuery(org));
+                System.out.println(1);
                 for (int j = 1; j <= 10; j++) {
                     DepartmentEntity dept = new DepartmentEntity(j+1,org.getId(), "Отдел " + j);
                     dept = departmentRepository.save(dept);
@@ -67,6 +72,7 @@ public class TestcontainersIntegrationTest {
                     }
                 }
             }
+            connection.commit();
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM organization")) {
                 if (resultSet.next()) {
@@ -88,7 +94,6 @@ public class TestcontainersIntegrationTest {
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT * FROM employee")) {
                 while (resultSet.next()) {
-                    //System.out.println(12);
                     System.out.println(
                             "ID: " + resultSet.getInt("id") +
                                     ", name: " + resultSet.getString("name") +
@@ -97,7 +102,14 @@ public class TestcontainersIntegrationTest {
                     );
                 }
             }
-
+            catch (SQLException e) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackEx) {
+                    rollbackEx.printStackTrace();
+                }
+                e.printStackTrace();
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
