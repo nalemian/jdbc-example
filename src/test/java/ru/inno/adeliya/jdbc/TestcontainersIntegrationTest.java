@@ -52,8 +52,9 @@ public class TestcontainersIntegrationTest {
                         postgres.getJdbcUrl(),
                         postgres.getUsername(),
                         postgres.getPassword()
-                )) {
-            System.out.println(1);
+                )
+        ) {
+            System.out.println("==============starting execution===========================");
             connection.setAutoCommit(false);
             OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection);
             DepartmentRepository departmentRepository = new DepartmentRepository(() -> connection);
@@ -62,7 +63,6 @@ public class TestcontainersIntegrationTest {
             for (int i = 1; i <= 5; i++) {
                 OrganizationEntity org = new OrganizationEntity(i + 1, "Организация " + i, 124 + i);
                 org = organizationRepository.save(org);
-                System.out.println(1);
                 for (int j = 1; j <= 10; j++) {
                     DepartmentEntity dept = new DepartmentEntity(j + 1, org.getId(), "Отдел " + j);
                     dept = departmentRepository.save(dept);
@@ -73,26 +73,28 @@ public class TestcontainersIntegrationTest {
                 }
             }
             connection.commit();
+            System.out.println("==============committed connection===========================");
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM organization")) {
                 if (resultSet.next()) {
-                    System.out.println(resultSet.getInt(1));
+                    System.out.println("count of orgs: %s".formatted(resultSet.getInt(1)));
                 }
             }
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM department")) {
                 if (resultSet.next()) {
-                    System.out.println(resultSet.getInt(1));
+                    System.out.println(("count of departments: %s".formatted(resultSet.getInt(1))));
                 }
             }
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM employee")) {
                 if (resultSet.next()) {
-                    System.out.println(resultSet.getInt(1));
+                    System.out.println(("count of employees: %s".formatted(resultSet.getInt(1))));
                 }
             }
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT * FROM employee")) {
+                System.out.println("employees:");
                 while (resultSet.next()) {
                     System.out.println(
                             "ID: " + resultSet.getInt("id") +
@@ -112,11 +114,5 @@ public class TestcontainersIntegrationTest {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }
-
-
-    @Test
-    void name() {
-        System.out.println(1);
     }
 }
