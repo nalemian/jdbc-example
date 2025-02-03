@@ -49,10 +49,10 @@ public class TestcontainersIntegrationTest {
     void insertALotOfData() {
         try (
                 Connection connection = DriverManager.getConnection(
-                postgres.getJdbcUrl(),
-                postgres.getUsername(),
-                postgres.getPassword()
-        )) {
+                        postgres.getJdbcUrl(),
+                        postgres.getUsername(),
+                        postgres.getPassword()
+                )) {
             System.out.println(1);
             connection.setAutoCommit(false);
             OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection);
@@ -60,14 +60,14 @@ public class TestcontainersIntegrationTest {
             EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection);
 
             for (int i = 1; i <= 5; i++) {
-                OrganizationEntity org = new OrganizationEntity(i+1, "Организация " + i, 124 + i);
+                OrganizationEntity org = new OrganizationEntity(i + 1, "Организация " + i, 124 + i);
                 org = organizationRepository.save(org);
                 System.out.println(1);
                 for (int j = 1; j <= 10; j++) {
-                    DepartmentEntity dept = new DepartmentEntity(j+1,org.getId(), "Отдел " + j);
+                    DepartmentEntity dept = new DepartmentEntity(j + 1, org.getId(), "Отдел " + j);
                     dept = departmentRepository.save(dept);
                     for (int k = 1; k <= 100; k++) {
-                        EmployeeEntity emp = new EmployeeEntity(k+1, "Сотрудник " + k, 10000 + (k * 10), dept.getId());
+                        EmployeeEntity emp = new EmployeeEntity(k + 1, "Сотрудник " + k, 10000 + (k * 10), dept.getId());
                         employeeRepository.save(emp);
                     }
                 }
@@ -101,8 +101,7 @@ public class TestcontainersIntegrationTest {
                                     ", department: " + resultSet.getInt("department")
                     );
                 }
-            }
-            catch (SQLException e) {
+            } catch (SQLException e) {
                 try {
                     connection.rollback();
                 } catch (SQLException rollbackEx) {
