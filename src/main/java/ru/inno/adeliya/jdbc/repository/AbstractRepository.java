@@ -113,16 +113,18 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
         try (Statement statement = connectionProvider.getConnection().createStatement()) {
             if (isNew(entity)) {
                 String command = getInsertQuery(entity);
+                System.out.println("creating new %s : %s".formatted(entity, command));
                 try (ResultSet resultSet = statement.executeQuery(command)) {
                     if (resultSet.next()) {
                         setId(entity, resultSet.getInt(1));
                     }
-                    this.connectionProvider.getConnection().commit();
+
                 }
             } else {
                 String command = getUpdateQuery(entity);
+                System.out.println("updating %s : %s".formatted(entity, command));
                 statement.executeUpdate(command);
-                this.connectionProvider.getConnection().commit();
+
             }
             return entity;
         }
@@ -133,7 +135,7 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
         String command = getSelectQuery(id);
         try (Statement statement = connectionProvider.getConnection().createStatement();
              ResultSet resultSet = statement.executeQuery(command)) {
-            this.connectionProvider.getConnection().commit();
+
             if (resultSet.next()) {
                 return readResultSet(resultSet);
             }
@@ -146,7 +148,7 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
         String command = getDeleteQuery(id);
         try (Statement statement = connectionProvider.getConnection().createStatement()) {
             statement.executeUpdate(command);
-            this.connectionProvider.getConnection().commit();
+
         }
     }
 }
