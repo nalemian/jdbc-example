@@ -13,6 +13,8 @@ import ru.inno.adeliya.jdbc.entity.OrganizationEntity;
 import ru.inno.adeliya.jdbc.repository.DepartmentRepository;
 import ru.inno.adeliya.jdbc.repository.EmployeeRepository;
 import ru.inno.adeliya.jdbc.repository.OrganizationRepository;
+import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
+import ru.inno.adeliya.jdbc.repository.generator.SingleThreadIntegerGenerator;
 
 import java.sql.*;
 
@@ -54,26 +56,25 @@ public class TestcontainersIntegrationTest {
                         postgres.getPassword()
                 )
         ) {
-            System.out.println("==============starting execution===========================");
             connection.setAutoCommit(false);
-            OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection);
-            DepartmentRepository departmentRepository = new DepartmentRepository(() -> connection);
-            EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection);
+            IdGenerator<Integer> generator = new SingleThreadIntegerGenerator();
+            OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection, generator);
+            DepartmentRepository departmentRepository = new DepartmentRepository(() -> connection, generator);
+            EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection, generator);
 
             for (int i = 1; i <= 5; i++) {
-                OrganizationEntity org = new OrganizationEntity(i + 1, "Организация " + i, 124 + i);
+                OrganizationEntity org = new OrganizationEntity(null, "Организация " + i, 124 + i);
                 org = organizationRepository.save(org);
                 for (int j = 1; j <= 10; j++) {
-                    DepartmentEntity dept = new DepartmentEntity(j + 1, org.getId(), "Отдел " + j);
+                    DepartmentEntity dept = new DepartmentEntity(null, org.getId(), "Отдел " + j);
                     dept = departmentRepository.save(dept);
                     for (int k = 1; k <= 100; k++) {
-                        EmployeeEntity emp = new EmployeeEntity(k + 1, "Сотрудник " + k, 10000 + (k * 10), dept.getId());
+                        EmployeeEntity emp = new EmployeeEntity(null, "Сотрудник " + k, 10000 + (k * 10), dept.getId());
                         employeeRepository.save(emp);
                     }
                 }
             }
             connection.commit();
-            System.out.println("==============committed connection===========================");
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM organization")) {
                 if (resultSet.next()) {

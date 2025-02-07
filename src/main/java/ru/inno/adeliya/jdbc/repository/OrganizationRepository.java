@@ -2,20 +2,24 @@ package ru.inno.adeliya.jdbc.repository;
 
 import ru.inno.adeliya.jdbc.config.ConnectionProvider;
 import ru.inno.adeliya.jdbc.entity.OrganizationEntity;
+import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
 
-public class OrganizationRepository extends AbstractRepository<OrganizationEntity> {
+public class OrganizationRepository extends AbstractRepository<OrganizationEntity, Integer> {
+    private final IdGenerator<Integer> generator;
 
-    public OrganizationRepository(ConnectionProvider connectionProvider) {
-        super(connectionProvider);
+
+    public OrganizationRepository(ConnectionProvider connectionProvider, IdGenerator<Integer> generator) {
+        super(connectionProvider, generator);
+        this.generator = generator;
     }
 
     @Override
     public boolean isNew(OrganizationEntity entity) {
-        return entity.getId() == 0;
+        return entity.getId() == null;
     }
 
     @Override
-    public void setId(OrganizationEntity entity, int id) {
+    public void setId(OrganizationEntity entity, Integer id) {
         entity.setId(id);
     }
 }

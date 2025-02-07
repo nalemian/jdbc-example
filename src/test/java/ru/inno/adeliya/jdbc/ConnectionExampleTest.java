@@ -10,6 +10,8 @@ import ru.inno.adeliya.jdbc.entity.OrganizationEntity;
 import ru.inno.adeliya.jdbc.repository.DepartmentRepository;
 import ru.inno.adeliya.jdbc.repository.EmployeeRepository;
 import ru.inno.adeliya.jdbc.repository.OrganizationRepository;
+import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
+import ru.inno.adeliya.jdbc.repository.generator.SingleThreadIntegerGenerator;
 
 import java.sql.SQLException;
 
@@ -72,9 +74,10 @@ class ConnectionExampleTest {
 
     @Test
     void testRepositories() throws SQLException {
-        DepartmentRepository departmentRepository = new DepartmentRepository(connectionProvider);
-        EmployeeRepository employeeRepository = new EmployeeRepository(connectionProvider);
-        OrganizationRepository organizationRepository = new OrganizationRepository(connectionProvider);
+        IdGenerator<Integer> generator = new SingleThreadIntegerGenerator();
+        DepartmentRepository departmentRepository = new DepartmentRepository(connectionProvider, generator);
+        EmployeeRepository employeeRepository = new EmployeeRepository(connectionProvider, generator);
+        OrganizationRepository organizationRepository = new OrganizationRepository(connectionProvider, generator);
         OrganizationEntity organization = new OrganizationEntity(0, "ООО ООО", 123);
         organization = organizationRepository.save(organization);
         System.out.println(organization);

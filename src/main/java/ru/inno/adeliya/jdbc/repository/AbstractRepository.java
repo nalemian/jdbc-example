@@ -3,6 +3,7 @@ package ru.inno.adeliya.jdbc.repository;
 import ru.inno.adeliya.jdbc.config.ConnectionProvider;
 import ru.inno.adeliya.jdbc.entity.Column;
 import ru.inno.adeliya.jdbc.entity.Table;
+import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -11,24 +12,27 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public abstract class AbstractRepository<T> implements EntityRepository<T> {
+public abstract class AbstractRepository<T, ID> implements EntityRepository<T, ID> {
 
     private final ConnectionProvider connectionProvider;
     private final String tableName;
     private final Class<T> entityClass;
+    private final IdGenerator<ID> generator;
 
-    public AbstractRepository(ConnectionProvider connectionProvider) {
+    public AbstractRepository(ConnectionProvider connectionProvider, IdGenerator<ID> generator) {
         this.connectionProvider = connectionProvider;
+        this.generator = generator;
         this.entityClass = (Class<T>) ((ParameterizedType) getClass()
                 .getGenericSuperclass()).getActualTypeArguments()[0];
         this.tableName = entityClass.getAnnotation(Table.class).name();
+
     }
 
     abstract boolean isNew(T entity);
 
-    abstract void setId(T entity, int id);
+    abstract void setId(T entity, ID id);
 
-    public String getSelectQuery(int id) {
+    public String getSelectQuery(ID id) {
         return String.format(
                 "SELECT * FROM %s WHERE id = %d;",
                 tableName,
@@ -36,7 +40,7 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
         );
     }
 
-    public String getDeleteQuery(int id) {
+    public String getDeleteQuery(ID id) {
         return String.format(
                 "DELETE FROM %s WHERE id = %d;",
                 tableName,
@@ -112,26 +116,28 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
     public T save(T entity) throws SQLException {
         try (Statement statement = connectionProvider.getConnection().createStatement()) {
             if (isNew(entity)) {
+                setId(entity, generator.generate());
+                System.out.println();
                 String command = getInsertQuery(entity);
                 System.out.println("creating new %s : %s".formatted(entity, command));
-                try (ResultSet resultSet = statement.executeQuery(command)) {
-                    if (resultSet.next()) {
-                        setId(entity, resultSet.getInt(1));
-                    }
-
-                }
+                try (ResultSet resultSet = statement.executeQuery(command)){}
+//                {
+//                    if (resultSet.next()) {
+//                       setId(entity, (ID) Integer.valueOf(resultSet.getInt(1)));
+//                    }
+//
+//               }
             } else {
                 String command = getUpdateQuery(entity);
                 System.out.println("updating %s : %s".formatted(entity, command));
                 statement.executeUpdate(command);
-
             }
             return entity;
         }
     }
 
     @Override
-    public T read(int id) throws SQLException {
+    public T read(ID id) throws SQLException {
         String command = getSelectQuery(id);
         try (Statement statement = connectionProvider.getConnection().createStatement();
              ResultSet resultSet = statement.executeQuery(command)) {
@@ -144,7 +150,7 @@ public abstract class AbstractRepository<T> implements EntityRepository<T> {
     }
 
     @Override
-    public void delete(int id) throws SQLException {
+    public void delete(ID id) throws SQLException {
         String command = getDeleteQuery(id);
         try (Statement statement = connectionProvider.getConnection().createStatement()) {
             statement.executeUpdate(command);
