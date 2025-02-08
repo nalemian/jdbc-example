@@ -18,6 +18,9 @@ import ru.inno.adeliya.jdbc.repository.generator.SingleThreadIntegerGenerator;
 
 import java.sql.*;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class TestcontainersIntegrationTest {
 
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
@@ -57,10 +60,12 @@ public class TestcontainersIntegrationTest {
                 )
         ) {
             connection.setAutoCommit(false);
-            IdGenerator<Integer> generator = new SingleThreadIntegerGenerator();
-            OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection, generator);
-            DepartmentRepository departmentRepository = new DepartmentRepository(() -> connection, generator);
-            EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection, generator);
+            IdGenerator<Integer> organizationIdGenerator = new SingleThreadIntegerGenerator();
+            IdGenerator<Integer> departmentIdGenerator = new SingleThreadIntegerGenerator();
+            IdGenerator<Integer> employeeIdGenerator = new SingleThreadIntegerGenerator();
+            OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection, organizationIdGenerator);
+            DepartmentRepository departmentRepository = new DepartmentRepository(() -> connection, departmentIdGenerator);
+            EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection, employeeIdGenerator);
 
             for (int i = 1; i <= 5; i++) {
                 OrganizationEntity org = new OrganizationEntity(null, "Организация " + i, 124 + i);
@@ -78,19 +83,25 @@ public class TestcontainersIntegrationTest {
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM organization")) {
                 if (resultSet.next()) {
-                    System.out.println("count of orgs: %s".formatted(resultSet.getInt(1)));
+                    int count = resultSet.getInt(1);
+                    System.out.println("count of organizations: "+count);
+                    assertEquals(5, count);
                 }
             }
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM department")) {
                 if (resultSet.next()) {
-                    System.out.println(("count of departments: %s".formatted(resultSet.getInt(1))));
+                    int count = resultSet.getInt(1);
+                    System.out.println("count of departments: %s"+count);
+                    assertEquals(50, count);
                 }
             }
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM employee")) {
                 if (resultSet.next()) {
+                    int count = resultSet.getInt(1);
                     System.out.println(("count of employees: %s".formatted(resultSet.getInt(1))));
+                    assertEquals(5000, count);
                 }
             }
             try (Statement statement = connection.createStatement();

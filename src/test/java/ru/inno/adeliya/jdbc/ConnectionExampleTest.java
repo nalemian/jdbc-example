@@ -15,9 +15,15 @@ import ru.inno.adeliya.jdbc.repository.generator.SingleThreadIntegerGenerator;
 
 import java.sql.SQLException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class ConnectionExampleTest {
 
     private ConnectionProvider connectionProvider;
+    private IdGenerator<Integer> departmentIdGenerator;
+    private IdGenerator<Integer> employeeIdGenerator;
+    private IdGenerator<Integer> organizationIdGenerator;
 
     @BeforeEach
     void setUp() {
@@ -74,27 +80,21 @@ class ConnectionExampleTest {
 
     @Test
     void testRepositories() throws SQLException {
-        IdGenerator<Integer> generator = new SingleThreadIntegerGenerator();
-        DepartmentRepository departmentRepository = new DepartmentRepository(connectionProvider, generator);
-        EmployeeRepository employeeRepository = new EmployeeRepository(connectionProvider, generator);
-        OrganizationRepository organizationRepository = new OrganizationRepository(connectionProvider, generator);
+        DepartmentRepository departmentRepository = new DepartmentRepository(connectionProvider, departmentIdGenerator);
+        EmployeeRepository employeeRepository = new EmployeeRepository(connectionProvider, employeeIdGenerator);
+        OrganizationRepository organizationRepository = new OrganizationRepository(connectionProvider, organizationIdGenerator);
         OrganizationEntity organization = new OrganizationEntity(0, "ООО ООО", 123);
         organization = organizationRepository.save(organization);
-        System.out.println(organization);
+        assertNotNull(organization);
         DepartmentEntity department = new DepartmentEntity(0, organization.getId(), "новый отдел");
         department = departmentRepository.save(department);
-        System.out.println(department);
+        assertNotNull(department);
         EmployeeEntity employee = new EmployeeEntity(0, "Орландо Блум", 600000, department.getId());
         employee = employeeRepository.save(employee);
-        System.out.println(employee);
-        System.out.println(organizationRepository.read(organization.getId()));
-        System.out.println(departmentRepository.read(department.getId()));
-        System.out.println(employeeRepository.read(employee.getId()));
+        assertNotNull(employee);
+        assertEquals(employee.getSalary(), 600000);
         employee.setSalary(700000);
         employeeRepository.save(employee);
-        System.out.println(employee);
-        employeeRepository.delete(employee.getId());
-        departmentRepository.delete(department.getId());
-        organizationRepository.delete(organization.getId());
+        assertEquals(employee.getSalary(), 700000);
     }
 }
