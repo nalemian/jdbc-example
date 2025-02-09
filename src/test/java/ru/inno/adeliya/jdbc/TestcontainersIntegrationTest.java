@@ -19,7 +19,6 @@ import ru.inno.adeliya.jdbc.repository.generator.SingleThreadIntegerGenerator;
 import java.sql.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestcontainersIntegrationTest {
 
@@ -80,49 +79,9 @@ public class TestcontainersIntegrationTest {
                 }
             }
             connection.commit();
-            try (Statement statement = connection.createStatement();
-                 ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM organization")) {
-                if (resultSet.next()) {
-                    int count = resultSet.getInt(1);
-                    System.out.println("count of organizations: "+count);
-                    assertEquals(5, count);
-                }
-            }
-            try (Statement statement = connection.createStatement();
-                 ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM department")) {
-                if (resultSet.next()) {
-                    int count = resultSet.getInt(1);
-                    System.out.println("count of departments: %s"+count);
-                    assertEquals(50, count);
-                }
-            }
-            try (Statement statement = connection.createStatement();
-                 ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM employee")) {
-                if (resultSet.next()) {
-                    int count = resultSet.getInt(1);
-                    System.out.println(("count of employees: %s".formatted(resultSet.getInt(1))));
-                    assertEquals(5000, count);
-                }
-            }
-            try (Statement statement = connection.createStatement();
-                 ResultSet resultSet = statement.executeQuery("SELECT * FROM employee")) {
-                System.out.println("employees:");
-                while (resultSet.next()) {
-                    System.out.println(
-                            "ID: " + resultSet.getInt("id") +
-                                    ", name: " + resultSet.getString("name") +
-                                    ", salary: " + resultSet.getInt("salary") +
-                                    ", department: " + resultSet.getInt("department")
-                    );
-                }
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException rollbackEx) {
-                    rollbackEx.printStackTrace();
-                }
-                e.printStackTrace();
-            }
+            assertEquals(5, organizationRepository.count());
+            assertEquals(50, departmentRepository.count());
+            assertEquals(5000, employeeRepository.count());
         } catch (SQLException e) {
             e.printStackTrace();
         }

@@ -28,6 +28,16 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         this.tableName = entityClass.getAnnotation(Table.class).name();
 
     }
+    public int count() throws SQLException {
+        String query = "SELECT COUNT(*) FROM " + tableName;
+        try (Statement statement = connectionProvider.getConnection().createStatement();
+             ResultSet resultSet = statement.executeQuery(query)) {
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+            return 0;
+        }
+    }
 
     abstract boolean isNew(T entity);
 
