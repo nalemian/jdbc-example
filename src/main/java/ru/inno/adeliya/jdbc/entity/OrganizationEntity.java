@@ -6,13 +6,13 @@ import java.sql.SQLException;
 @Table(name = "organization")
 public class OrganizationEntity {
     @Column(name = "id")
-    private int id;
+    private Integer id;
     @Column(name = "name")
     private String name;
     @Column(name = "tax_number")
     private int tax_number;
 
-    public OrganizationEntity(int id, String name, int tax_number) {
+    public OrganizationEntity(Integer id, String name, int tax_number) {
         this.id = id;
         this.name = name;
         this.tax_number = tax_number;
@@ -20,15 +20,18 @@ public class OrganizationEntity {
 
     public OrganizationEntity(ResultSet resultSet) throws SQLException {
         this.id = resultSet.getInt("id");
+        if (resultSet.wasNull()) {
+            this.id = null;
+        }
         this.name = resultSet.getString("name");
         this.tax_number = resultSet.getInt("tax_number");
     }
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

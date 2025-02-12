@@ -6,7 +6,7 @@ import java.sql.SQLException;
 @Table(name = "employee")
 public class EmployeeEntity {
     @Column(name = "id")
-    private int id;
+    private Integer id;
     @Column(name = "name")
     private String name;
     @Column(name = "salary")
@@ -14,7 +14,7 @@ public class EmployeeEntity {
     @Column(name = "department")
     private int department;
 
-    public EmployeeEntity(int id, String name, int salary, int department) {
+    public EmployeeEntity(Integer id, String name, int salary, int department) {
         this.id = id;
         this.name = name;
         this.salary = salary;
@@ -23,16 +23,19 @@ public class EmployeeEntity {
 
     public EmployeeEntity(ResultSet resultSet) throws SQLException {
         this.id = resultSet.getInt("id");
+        if (resultSet.wasNull()) {
+            this.id = null;
+        }
         this.name = resultSet.getString("name");
         this.salary = resultSet.getInt("salary");
         this.department = resultSet.getInt("department");
     }
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

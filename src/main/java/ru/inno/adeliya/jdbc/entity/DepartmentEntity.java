@@ -10,13 +10,13 @@ import java.sql.SQLException;
 @Table(name = "department")
 public class DepartmentEntity {
     @Column(name = "id")
-    private int id;
+    private Integer id;
     @Column(name = "organization")
     private int organization;
     @Column(name = "name")
     private String name;
 
-    public DepartmentEntity(int id, int organization, String name) {
+    public DepartmentEntity(Integer id, int organization, String name) {
         this.id = id;
         this.organization = organization;
         this.name = name;
@@ -24,15 +24,18 @@ public class DepartmentEntity {
 
     public DepartmentEntity(ResultSet resultSet) throws SQLException {
         this.id = resultSet.getInt("id");
+        if (resultSet.wasNull()) {
+            this.id = null;
+        }
         this.organization = resultSet.getInt("organization");
         this.name = resultSet.getString("name");
     }
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
