@@ -8,7 +8,6 @@ import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -28,6 +27,7 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         this.tableName = entityClass.getAnnotation(Table.class).name();
 
     }
+
     public int count() throws SQLException {
         String query = "SELECT COUNT(*) FROM " + tableName;
         try (Statement statement = connectionProvider.getConnection().createStatement();
@@ -126,21 +126,16 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
     @Override
     public T save(T entity) throws SQLException {
         String command;
-        boolean isNew = isNew(entity);
-        if (isNew) {
+        if (isNew(entity)) {
             setId(entity, generator.generate());
             command = getInsertQuery(entity);
         } else {
             command = getUpdateQuery(entity);
         }
-        try (PreparedStatement statement = connectionProvider.getConnection().prepareStatement(command, Statement.RETURN_GENERATED_KEYS)) {
-            if (statement.executeUpdate() == 0) {
-                System.out.println("No rows affected");
-            }
-            try (ResultSet resultSet = statement.getGeneratedKeys()) {
-                if (resultSet.next()) {
-                    System.out.println("Generated key: " + resultSet.getInt(1));
-                }
+        try (Statement statement = connectionProvider.getConnection().createStatement();
+             ResultSet resultSet = statement.executeQuery(command)) {
+            if (resultSet.next()) {
+                System.out.println(resultSet.getInt(1));
             }
         }
         return entity;
