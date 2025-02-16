@@ -21,7 +21,9 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import static java.awt.desktop.UserSessionEvent.Reason.LOCK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ThreadsTest {
@@ -52,7 +54,7 @@ public class ThreadsTest {
         connection.rollback();
     }
     @Test
-    void executeInParallelThreads() throws SQLException {
+    void executeInParallelThreads() throws SQLException, InterruptedException {
         IdGenerator<Integer> organizationIdGenerator = new SingleThreadIntegerGenerator();
         IdGenerator<Integer> departmentIdGenerator = new SingleThreadIntegerGenerator();
         IdGenerator<Integer> employeeIdGenerator = new SingleThreadIntegerGenerator();
@@ -62,15 +64,17 @@ public class ThreadsTest {
         ExecutorService executorService = Executors.newFixedThreadPool(5);
         executorService.submit(() -> {
             try {
-                for (int i = 1; i <= 5; i++) {
-                    OrganizationEntity org = new OrganizationEntity(null, "Организация " + i, 124 + i);
-                    org = organizationRepository.save(org);
-                    for (int j = 1; j <= 10; j++) {
-                        DepartmentEntity dept = new DepartmentEntity(null, org.getId(), "Отдел " + j);
-                        dept = departmentRepository.save(dept);
-                        for (int k = 1; k <= 100; k++) {
-                            EmployeeEntity emp = new EmployeeEntity(null, "Сотрудник " + k, 10000 + (k * 10), dept.getId());
-                            employeeRepository.save(emp);
+                synchronized (LOCK) {
+                    for (int i = 1; i <= 5; i++) {
+                        OrganizationEntity org = new OrganizationEntity(null, "Организация " + i, 124 + i);
+                        org = organizationRepository.save(org);
+                        for (int j = 1; j <= 10; j++) {
+                            DepartmentEntity dept = new DepartmentEntity(null, org.getId(), "Отдел " + j);
+                            dept = departmentRepository.save(dept);
+                            for (int k = 1; k <= 100; k++) {
+                                EmployeeEntity emp = new EmployeeEntity(null, "Сотрудник " + k, 10000 + (k * 10), dept.getId());
+                                employeeRepository.save(emp);
+                            }
                         }
                     }
                 }
@@ -79,6 +83,8 @@ public class ThreadsTest {
             }
         });
         executorService.shutdown();
+        executorService.awaitTermination(1, TimeUnit.MINUTES);
+        connection.commit();
         assertEquals(5, organizationRepository.count());
         assertEquals(50, departmentRepository.count());
         assertEquals(5000, employeeRepository.count());
