@@ -2,7 +2,7 @@ package ru.inno.adeliya.jdbc.repository.generator;
 
 public class SingleThreadIntegerGenerator implements IdGenerator<Integer>{
 
-    private Integer counter;
+    protected Integer counter;
     public SingleThreadIntegerGenerator() {
         this.counter = 0;
     }
