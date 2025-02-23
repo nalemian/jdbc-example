@@ -16,7 +16,7 @@ public class NextValSequenceGenerator implements IdGenerator<Long> {
 
     @Override
     public Long generate() {
-        String query=String.format("SELECT nextval('%s')", sequenceName);
+        String query = String.format("SELECT nextval('%s')", sequenceName);
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(query)) {
             if (resultSet.next()) {

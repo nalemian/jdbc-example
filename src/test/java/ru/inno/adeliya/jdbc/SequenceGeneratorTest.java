@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
-import ru.inno.adeliya.jdbc.repository.generator.SequenceWithBatchesGenerator;
 import ru.inno.adeliya.jdbc.repository.generator.NextValSequenceGenerator;
+import ru.inno.adeliya.jdbc.repository.generator.SequenceWithBatchesGenerator;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -16,8 +16,8 @@ import java.sql.SQLException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -69,6 +69,7 @@ public class SequenceGeneratorTest {
             e.printStackTrace();
         }
     }
+
     private Set<Long> generateIdsInParallel(IdGenerator<Long> generator, int threads, int threadIds) throws InterruptedException {
         ExecutorService executor = Executors.newFixedThreadPool(threads);
         Set<Long> idSet = ConcurrentHashMap.newKeySet();
