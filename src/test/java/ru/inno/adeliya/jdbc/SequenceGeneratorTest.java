@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
 import ru.inno.adeliya.jdbc.repository.generator.SequenceWithBatchesGenerator;
 import ru.inno.adeliya.jdbc.repository.generator.NextValSequenceGenerator;
 
@@ -44,26 +45,13 @@ public class SequenceGeneratorTest {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
         )) {
-            NextValSequenceGenerator generator = new NextValSequenceGenerator(connection);
+            NextValSequenceGenerator generator = new NextValSequenceGenerator(connection, "sequence");
             int threads = 10;
             int threadIds = 50;
-            ExecutorService executor = Executors.newFixedThreadPool(threads);
-            Set<Long> idSet = ConcurrentHashMap.newKeySet();
-            for (int i = 0; i < threads; i++) {
-                executor.submit(() -> {
-                    for (int j = 0; j < threadIds; j++) {
-                        long id = generator.generate();
-                        idSet.add(id);
-                    }
-                });
-            }
-            executor.shutdown();
-            executor.awaitTermination(1, TimeUnit.MINUTES);
+            Set<Long> idSet = generateIdsInParallel(generator, threads, threadIds);
             assertEquals(threads * threadIds, idSet.size());
-        } catch (SQLException e) {
+        } catch (SQLException | InterruptedException e) {
             e.printStackTrace();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -72,26 +60,27 @@ public class SequenceGeneratorTest {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
         )) {
-            SequenceWithBatchesGenerator generator = new SequenceWithBatchesGenerator(connection, 20);
+            SequenceWithBatchesGenerator generator = new SequenceWithBatchesGenerator(connection, 20, "sequenceWithBatches");
             int threads = 10;
             int threadIds = 50;
-            ExecutorService executor = Executors.newFixedThreadPool(threads);
-            Set<Long> idSet = ConcurrentHashMap.newKeySet();
-            for (int i = 0; i < threads; i++) {
-                executor.submit(() -> {
-                    for (int j = 0; j < threadIds; j++) {
-                        long id = generator.generate();
-                        idSet.add(id);
-                    }
-                });
-            }
-            executor.shutdown();
-            executor.awaitTermination(1, TimeUnit.MINUTES);
+            Set<Long> idSet = generateIdsInParallel(generator, threads, threadIds);
             assertEquals(threads * threadIds, idSet.size());
-        } catch (SQLException e) {
+        } catch (SQLException | InterruptedException e) {
             e.printStackTrace();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
+    }
+    private Set<Long> generateIdsInParallel(IdGenerator<Long> generator, int threads, int threadIds) throws InterruptedException {
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        Set<Long> idSet = ConcurrentHashMap.newKeySet();
+        for (int i = 0; i < threads; i++) {
+            executor.submit(() -> {
+                for (int j = 0; j < threadIds; j++) {
+                    idSet.add(generator.generate());
+                }
+            });
+        }
+        executor.shutdown();
+        executor.awaitTermination(1, TimeUnit.MINUTES);
+        return idSet;
     }
 }

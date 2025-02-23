@@ -13,23 +13,25 @@ public class SequenceWithBatchesGenerator implements IdGenerator<Long> {
     private final Connection connection;
     private final int batchSize;
     private final Queue<Long> idQueue = new LinkedList<>();
+    private final String sequenceName;
 
-    public SequenceWithBatchesGenerator(Connection connection, int batchSize) {
+    public SequenceWithBatchesGenerator(Connection connection, int batchSize, String sequenceName) {
         this.connection = connection;
         this.batchSize = batchSize;
+        this.sequenceName = sequenceName;
     }
 
     @Override
     public synchronized Long generate() {
         if (idQueue.isEmpty()) {
-            String query = String.format("SELECT nextval('mysequence') FROM generate_series(1, %d)", batchSize);
+            String query = String.format("SELECT nextval('%s') FROM generate_series(1, %d)", sequenceName, batchSize);
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery(query)) {
                 while (resultSet.next()) {
                     idQueue.offer(resultSet.getLong(1));
                 }
             } catch (SQLException e) {
-                throw new RuntimeException();
+                throw new RuntimeException(e);
             }
         }
         return idQueue.poll();

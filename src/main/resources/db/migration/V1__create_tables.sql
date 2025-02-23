@@ -20,4 +20,3 @@ create table if not exists department (
     name varchar,
     primary key (id)
 );
-CREATE SEQUENCE IF NOT EXISTS mysequence START 1;
