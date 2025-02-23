@@ -1,7 +1,5 @@
 package ru.inno.adeliya.jdbc.repository.generator;
 
-import ru.inno.adeliya.jdbc.config.ConnectionProvider;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;

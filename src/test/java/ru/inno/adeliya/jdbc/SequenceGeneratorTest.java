@@ -45,7 +45,7 @@ public class SequenceGeneratorTest {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
         )) {
-            NextValSequenceGenerator generator = new NextValSequenceGenerator(connection, "sequence");
+            NextValSequenceGenerator generator = new NextValSequenceGenerator(connection, "mysequence");
             int threads = 10;
             int threadIds = 50;
             Set<Long> idSet = generateIdsInParallel(generator, threads, threadIds);
@@ -60,7 +60,7 @@ public class SequenceGeneratorTest {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
         )) {
-            SequenceWithBatchesGenerator generator = new SequenceWithBatchesGenerator(connection, 20, "sequenceWithBatches");
+            SequenceWithBatchesGenerator generator = new SequenceWithBatchesGenerator(connection, 20, "mysequence");
             int threads = 10;
             int threadIds = 50;
             Set<Long> idSet = generateIdsInParallel(generator, threads, threadIds);
