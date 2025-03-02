@@ -8,9 +8,11 @@ import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public abstract class AbstractRepository<T, ID> implements EntityRepository<T, ID> {
 
@@ -160,6 +162,50 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         try (Statement statement = connectionProvider.getConnection().createStatement()) {
             statement.executeUpdate(command);
 
+        }
+    }
+
+    public void saveAll(Collection<T> entities) throws SQLException {
+        if (entities.isEmpty()) {
+            return;
+        }
+        Field[] fields = entityClass.getDeclaredFields();
+        List<String> columnNames = new ArrayList<>();
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(Column.class)) {
+                columnNames.add(field.getAnnotation(Column.class).name());
+            }
+        }
+        String columnNamesStr = String.join(", ", columnNames);
+        String placeholders = String.join(", ", Collections.nCopies(columnNames.size(), "?"));
+        String sql = String.format("INSERT INTO %s (%s) VALUES (%s) RETURNING id;", tableName, columnNamesStr, placeholders);
+        try (Connection connection = connectionProvider.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            for (T entity : entities) {
+                if (isNew(entity)) {
+                    setId(entity, generator.generate());
+                }
+                int index = 1;
+                for (Field field : fields) {
+                    if (field.isAnnotationPresent(Column.class)) {
+                        field.setAccessible(true);
+                        try {
+                            preparedStatement.setObject(index++, field.get(entity));
+                        } catch (IllegalAccessException e) {
+                            throw new RuntimeException("Ошибка доступа к полю " + field.getName(), e);
+                        }
+                    }
+                }
+                preparedStatement.addBatch();
+            }
+            preparedStatement.executeBatch();
+            try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
+                for (T entity : entities) {
+                    if (generatedKeys.next()) {
+                        setId(entity, (ID) Integer.valueOf(generatedKeys.getInt(1)));
+                    }
+                }
+            }
         }
     }
 }

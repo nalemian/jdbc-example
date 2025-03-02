@@ -7,7 +7,6 @@ import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
 public class OrganizationRepository extends AbstractRepository<OrganizationEntity, Integer> {
     private final IdGenerator<Integer> generator;
 
-
     public OrganizationRepository(ConnectionProvider connectionProvider, IdGenerator<Integer> generator) {
         super(connectionProvider, generator);
         this.generator = generator;
