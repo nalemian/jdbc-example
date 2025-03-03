@@ -179,8 +179,9 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         String columnNamesStr = String.join(", ", columnNames);
         String placeholders = String.join(", ", Collections.nCopies(columnNames.size(), "?"));
         String sql = String.format("INSERT INTO %s (%s) VALUES (%s) RETURNING id;", tableName, columnNamesStr, placeholders);
-        try (Connection connection = connectionProvider.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        Connection connection = connectionProvider.getConnection();
+        PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+        try {
             for (T entity : entities) {
                 if (isNew(entity)) {
                     setId(entity, generator.generate());
@@ -202,10 +203,16 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
             try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
                 for (T entity : entities) {
                     if (generatedKeys.next()) {
-                        setId(entity, (ID) Integer.valueOf(generatedKeys.getInt(1)));
+                        int id = generatedKeys.getInt(1);
+                        setId(entity, (ID) Integer.valueOf(id));
+                        System.out.println(id);
                     }
                 }
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            preparedStatement.close();
         }
     }
 }

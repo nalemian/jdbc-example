@@ -90,12 +90,12 @@ public class SequenceGeneratorTest {
             OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection, organizationIdGenerator);
             DepartmentRepository departmentRepository = new DepartmentRepository(() -> connection, departmentIdGenerator);
             EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection, employeeIdGenerator);
-            int orgIndex = 1;
-            insertOneOrganizationBatch(orgIndex, organizationRepository, departmentRepository, employeeRepository);
+            int numberOfOrgs = 1;
+            insertOneOrganizationBatch(numberOfOrgs, organizationRepository, departmentRepository, employeeRepository);
             connection.commit();
-            assertEquals(1, organizationRepository.count());
-            assertEquals(10, departmentRepository.count());
-            assertEquals(1000, employeeRepository.count());
+            assertEquals(numberOfOrgs, organizationRepository.count());
+            assertEquals(numberOfOrgs * 10, departmentRepository.count());
+            assertEquals(numberOfOrgs * 1000, employeeRepository.count());
         } catch (SQLException e) {
             e.printStackTrace();
         }
