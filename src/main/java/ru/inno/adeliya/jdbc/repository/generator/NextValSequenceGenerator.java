@@ -14,7 +14,6 @@ public class NextValSequenceGenerator implements IdGenerator<Integer> {
         this.sequenceName = sequenceName;
     }
 
-    @Override
     public Integer generate() {
         String query = String.format("SELECT nextval('%s')", sequenceName);
         try (Statement statement = connection.createStatement();
