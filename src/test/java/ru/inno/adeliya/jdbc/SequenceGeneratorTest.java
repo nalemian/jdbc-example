@@ -28,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class SequenceGeneratorTest {
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -98,6 +99,30 @@ public class SequenceGeneratorTest {
             assertEquals(numberOfOrgs * 1000, employeeRepository.count());
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+    @Test
+    void saveAllWithExistingEntity() {
+        try (Connection connection = DriverManager.getConnection(
+                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
+        )) {
+            connection.setAutoCommit(false);
+            SequenceWithBatchesGenerator organizationIdGenerator = new SequenceWithBatchesGenerator(connection, 20, "mysequence");
+            SequenceWithBatchesGenerator departmentIdGenerator = new SequenceWithBatchesGenerator(connection, 20, "mysequence");
+            SequenceWithBatchesGenerator employeeIdGenerator = new SequenceWithBatchesGenerator(connection, 20, "mysequence");
+            OrganizationRepository organizationRepository = new OrganizationRepository(() -> connection, organizationIdGenerator);
+            DepartmentRepository departmentRepository = new DepartmentRepository(() -> connection, departmentIdGenerator);
+            EmployeeRepository employeeRepository = new EmployeeRepository(() -> connection, employeeIdGenerator);
+            int numberOfOrgs=1;
+            insertOneOrganizationBatch(numberOfOrgs, organizationRepository, departmentRepository, employeeRepository);
+            OrganizationEntity existingOrg=organizationRepository.read(numberOfOrgs);
+            assertNotNull(existingOrg);
+            OrganizationEntity updatedOrg=new OrganizationEntity(existingOrg.getId(), "новая организация", existingOrg.getTax_number());
+            insertOneOrganizationBatch(numberOfOrgs, organizationRepository, departmentRepository, employeeRepository);
+            assertEquals(1, organizationRepository.count());
+            assertEquals("новая организация", organizationRepository.read(existingOrg.getId()).getName());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 

@@ -5,14 +5,10 @@ import ru.inno.adeliya.jdbc.entity.Column;
 import ru.inno.adeliya.jdbc.entity.Table;
 import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.*;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class AbstractRepository<T, ID> implements EntityRepository<T, ID> {
 
@@ -20,6 +16,7 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
     private final String tableName;
     private final Class<T> entityClass;
     private final IdGenerator<ID> generator;
+    private final Map<Field, Method> getters;
 
     public AbstractRepository(ConnectionProvider connectionProvider, IdGenerator<ID> generator) {
         this.connectionProvider = connectionProvider;
@@ -27,8 +24,25 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         this.entityClass = (Class<T>) ((ParameterizedType) getClass()
                 .getGenericSuperclass()).getActualTypeArguments()[0];
         this.tableName = entityClass.getAnnotation(Table.class).name();
-
+        this.getters = new HashMap<>();
+        initializeGetters();
     }
+
+    private void initializeGetters() {
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(Column.class)) {
+                String fieldName = field.getName();
+                String getterName = "get" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+                try {
+                    Method getter = entityClass.getMethod(getterName);
+                    getters.put(field, getter);
+                } catch (NoSuchMethodException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
 
     public int count() throws SQLException {
         String query = "SELECT COUNT(*) FROM " + tableName;
@@ -165,9 +179,9 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         }
     }
 
-    public void saveAll(Collection<T> entities) throws SQLException {
+    public Collection<T> saveAll(Collection<T> entities) throws SQLException {
         if (entities.isEmpty()) {
-            return;
+            return Collections.emptyList();
         }
         Field[] fields = entityClass.getDeclaredFields();
         List<String> columnNames = new ArrayList<>();
@@ -183,17 +197,18 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
         try {
             for (T entity : entities) {
+                int index = 1;
                 if (isNew(entity)) {
                     setId(entity, generator.generate());
                 }
-                int index = 1;
                 for (Field field : fields) {
                     if (field.isAnnotationPresent(Column.class)) {
-                        field.setAccessible(true);
+                        Method getter = getters.get(field);
                         try {
-                            preparedStatement.setObject(index++, field.get(entity));
-                        } catch (IllegalAccessException e) {
-                            throw new RuntimeException("Ошибка доступа к полю " + field.getName(), e);
+                            Object value = getter.invoke(entity);
+                            preparedStatement.setObject(index++, value);
+                        } catch (IllegalAccessException | InvocationTargetException e) {
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -211,8 +226,7 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
             }
         } catch (SQLException e) {
             e.printStackTrace();
-        } finally {
-            preparedStatement.close();
         }
+        return entities;
     }
 }
