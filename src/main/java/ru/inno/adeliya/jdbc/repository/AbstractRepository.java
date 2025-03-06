@@ -254,8 +254,8 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         List<String> columnsForUpdate = new ArrayList<>();
         for (Field field : fields) {
             if (field.isAnnotationPresent(Column.class)) {
-                String columnName=field.getAnnotation(Column.class).name();
-                if (!"id".equals(columnName)) columnsForUpdate.add(columnName+" = ?");
+                String columnName = field.getAnnotation(Column.class).name();
+                if (!"id".equals(columnName)) columnsForUpdate.add(columnName + " = ?");
             }
         }
         String columnsForUpdateStr = String.join(", ", columnsForUpdate);
@@ -266,7 +266,7 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
                 int index = 1;
                 for (Field field : fields) {
                     if (field.isAnnotationPresent(Column.class)) {
-                        String columnName=field.getAnnotation(Column.class).name();
+                        String columnName = field.getAnnotation(Column.class).name();
                         if (!"id".equals(columnName)) {
                             Method getter = getters.get(field);
                             try {
@@ -280,7 +280,7 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
                 }
                 for (Field field : fields) {
                     if (field.isAnnotationPresent(Column.class)) {
-                        String columnName=field.getAnnotation(Column.class).name();
+                        String columnName = field.getAnnotation(Column.class).name();
                         if ("id".equals(columnName)) {
                             Method getter = getters.get(field);
                             try {
