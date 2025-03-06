@@ -8,7 +8,6 @@ import ru.inno.adeliya.jdbc.repository.generator.IdGenerator;
 import java.lang.reflect.*;
 import java.sql.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public abstract class AbstractRepository<T, ID> implements EntityRepository<T, ID> {
 
@@ -183,6 +182,28 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         if (entities.isEmpty()) {
             return Collections.emptyList();
         }
+        List<T> newEntities = new ArrayList<>();
+        List<T> updateEntities = new ArrayList<>();
+        Connection connection = connectionProvider.getConnection();
+        for (T entity : entities) {
+            if (isNew(entity)) {
+                newEntities.add(entity);
+            } else {
+                updateEntities.add(entity);
+            }
+        }
+        if (!newEntities.isEmpty()) {
+            batchInsertEntities(newEntities, connection);
+        }
+
+        if (!updateEntities.isEmpty()) {
+            batchUpdateEntities(updateEntities, connection);
+        }
+
+        return entities;
+    }
+
+    private void batchInsertEntities(List<T> entities, Connection connection) throws SQLException {
         Field[] fields = entityClass.getDeclaredFields();
         List<String> columnNames = new ArrayList<>();
         for (Field field : fields) {
@@ -193,7 +214,6 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         String columnNamesStr = String.join(", ", columnNames);
         String placeholders = String.join(", ", Collections.nCopies(columnNames.size(), "?"));
         String sql = String.format("INSERT INTO %s (%s) VALUES (%s) RETURNING id;", tableName, columnNamesStr, placeholders);
-        Connection connection = connectionProvider.getConnection();
         PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
         try {
             for (T entity : entities) {
@@ -227,6 +247,57 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return entities;
+    }
+
+    private void batchUpdateEntities(List<T> entities, Connection connection) throws SQLException {
+        Field[] fields = entityClass.getDeclaredFields();
+        List<String> columnsForUpdate = new ArrayList<>();
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(Column.class)) {
+                String columnName=field.getAnnotation(Column.class).name();
+                if (!"id".equals(columnName)) columnsForUpdate.add(columnName+" = ?");
+            }
+        }
+        String columnsForUpdateStr = String.join(", ", columnsForUpdate);
+        String sql = String.format("UPDATE %s SET %s WHERE id = ?", tableName, columnsForUpdateStr);
+        PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+        try {
+            for (T entity : entities) {
+                int index = 1;
+                for (Field field : fields) {
+                    if (field.isAnnotationPresent(Column.class)) {
+                        String columnName=field.getAnnotation(Column.class).name();
+                        if (!"id".equals(columnName)) {
+                            Method getter = getters.get(field);
+                            try {
+                                Object value = getter.invoke(entity);
+                                preparedStatement.setObject(index++, value);
+                            } catch (IllegalAccessException | InvocationTargetException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+                for (Field field : fields) {
+                    if (field.isAnnotationPresent(Column.class)) {
+                        String columnName=field.getAnnotation(Column.class).name();
+                        if ("id".equals(columnName)) {
+                            Method getter = getters.get(field);
+                            try {
+                                Object value = getter.invoke(entity);
+                                preparedStatement.setObject(index, value);
+                            } catch (IllegalAccessException | InvocationTargetException e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        }
+                    }
+                }
+                preparedStatement.addBatch();
+            }
+            preparedStatement.executeBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

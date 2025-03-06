@@ -19,9 +19,7 @@ import ru.inno.adeliya.jdbc.repository.generator.SequenceWithBatchesGenerator;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -118,9 +116,13 @@ public class SequenceGeneratorTest {
             OrganizationEntity existingOrg=organizationRepository.read(numberOfOrgs);
             assertNotNull(existingOrg);
             OrganizationEntity updatedOrg=new OrganizationEntity(existingOrg.getId(), "новая организация", existingOrg.getTax_number());
-            insertOneOrganizationBatch(numberOfOrgs, organizationRepository, departmentRepository, employeeRepository);
-            assertEquals(1, organizationRepository.count());
+            OrganizationEntity newOrg=new OrganizationEntity(null, "совсем новая организация", 111);
+            organizationRepository.saveAll(Arrays.asList(updatedOrg, newOrg));
+            connection.commit();
+            assertEquals(2, organizationRepository.count());
             assertEquals("новая организация", organizationRepository.read(existingOrg.getId()).getName());
+            OrganizationEntity insertedNewOrg=organizationRepository.read(newOrg.getId());
+            assertEquals("совсем новая организация", insertedNewOrg.getName());
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
