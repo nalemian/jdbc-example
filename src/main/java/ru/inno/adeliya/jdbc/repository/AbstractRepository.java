@@ -203,38 +203,28 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         return entities;
     }
 
-    private void batchInsertEntities(List<T> entities, Connection connection) throws SQLException {
-        Field[] fields = entityClass.getDeclaredFields();
-        List<String> columnNames = new ArrayList<>();
-        for (Field field : fields) {
-            if (field.isAnnotationPresent(Column.class)) {
-                columnNames.add(field.getAnnotation(Column.class).name());
+    private void processBatch(Collection<T> entities, PreparedStatement preparedStatement, boolean isInsert) throws SQLException {
+        for (T entity : entities) {
+            if (isInsert && isNew(entity)) {
+                setId(entity, generator.generate());
             }
+            int index = setEntityParameters(preparedStatement, entity, !isInsert);
+            if (!isInsert) {
+                preparedStatement.setObject(index, getId(entity));
+            }
+            preparedStatement.addBatch();
         }
+        preparedStatement.executeBatch();
+    }
+
+    private void batchInsertEntities(List<T> entities, Connection connection) throws SQLException {
+        List<String> columnNames = getColumnNames(false);
         String columnNamesStr = String.join(", ", columnNames);
         String placeholders = String.join(", ", Collections.nCopies(columnNames.size(), "?"));
         String sql = String.format("INSERT INTO %s (%s) VALUES (%s) RETURNING id;", tableName, columnNamesStr, placeholders);
         PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
         try {
-            for (T entity : entities) {
-                int index = 1;
-                if (isNew(entity)) {
-                    setId(entity, generator.generate());
-                }
-                for (Field field : fields) {
-                    if (field.isAnnotationPresent(Column.class)) {
-                        Method getter = getters.get(field);
-                        try {
-                            Object value = getter.invoke(entity);
-                            preparedStatement.setObject(index++, value);
-                        } catch (IllegalAccessException | InvocationTargetException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-                preparedStatement.addBatch();
-            }
-            preparedStatement.executeBatch();
+            processBatch(entities, preparedStatement, true);
             try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
                 for (T entity : entities) {
                     if (generatedKeys.next()) {
@@ -250,54 +240,68 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
     }
 
     private void batchUpdateEntities(List<T> entities, Connection connection) throws SQLException {
-        Field[] fields = entityClass.getDeclaredFields();
+        List<String> columnNames = getColumnNames(true);
         List<String> columnsForUpdate = new ArrayList<>();
-        for (Field field : fields) {
-            if (field.isAnnotationPresent(Column.class)) {
-                String columnName = field.getAnnotation(Column.class).name();
-                if (!"id".equals(columnName)) columnsForUpdate.add(columnName + " = ?");
-            }
+        for (String columnName : columnNames) {
+            columnsForUpdate.add(columnName + " = ?");
         }
         String columnsForUpdateStr = String.join(", ", columnsForUpdate);
         String sql = String.format("UPDATE %s SET %s WHERE id = ?", tableName, columnsForUpdateStr);
         PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
         try {
-            for (T entity : entities) {
-                int index = 1;
-                for (Field field : fields) {
-                    if (field.isAnnotationPresent(Column.class)) {
-                        String columnName = field.getAnnotation(Column.class).name();
-                        if (!"id".equals(columnName)) {
-                            Method getter = getters.get(field);
-                            try {
-                                Object value = getter.invoke(entity);
-                                preparedStatement.setObject(index++, value);
-                            } catch (IllegalAccessException | InvocationTargetException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                }
-                for (Field field : fields) {
-                    if (field.isAnnotationPresent(Column.class)) {
-                        String columnName = field.getAnnotation(Column.class).name();
-                        if ("id".equals(columnName)) {
-                            Method getter = getters.get(field);
-                            try {
-                                Object value = getter.invoke(entity);
-                                preparedStatement.setObject(index, value);
-                            } catch (IllegalAccessException | InvocationTargetException e) {
-                                e.printStackTrace();
-                            }
-                            break;
-                        }
-                    }
-                }
-                preparedStatement.addBatch();
-            }
-            preparedStatement.executeBatch();
+            processBatch(entities, preparedStatement, false);
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    private Object getId(T entity) {
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(Column.class)) {
+                String columnName = field.getAnnotation(Column.class).name();
+                if ("id".equals(columnName)) {
+                    Method getter = getters.get(field);
+                    try {
+                        return getter.invoke(entity);
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private int setEntityParameters(PreparedStatement ps, T entity, boolean skipId) {
+        int index = 1;
+        for (Field field : getColumnFields(skipId)) {
+            Method getter = getters.get(field);
+            try {
+                Object value = getter.invoke(entity);
+                ps.setObject(index++, value);
+            } catch (IllegalAccessException | InvocationTargetException | SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return index;
+    }
+
+    private List<String> getColumnNames(boolean skipId) {
+        List<String> columns = new ArrayList<>();
+        for (Field field : getColumnFields(skipId)) {
+            String columnName = field.getAnnotation(Column.class).name();
+            columns.add(columnName);
+        }
+        return columns;
+    }
+
+    private List<Field> getColumnFields(boolean skipId) {
+        List<Field> fields = new ArrayList<>();
+        for (Field field : getters.keySet()) {
+            String columnName = field.getAnnotation(Column.class).name();
+            if (skipId && "id".equals(columnName)) continue;
+            fields.add(field);
+        }
+        return fields;
     }
 }
