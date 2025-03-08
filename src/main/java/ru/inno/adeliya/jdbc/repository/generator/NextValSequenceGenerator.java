@@ -5,7 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class NextValSequenceGenerator implements IdGenerator<Long> {
+public class NextValSequenceGenerator implements IdGenerator<Integer> {
     private final Connection connection;
     private final String sequenceName;
 
@@ -15,12 +15,12 @@ public class NextValSequenceGenerator implements IdGenerator<Long> {
     }
 
     @Override
-    public Long generate() {
+    public Integer generate() {
         String query = String.format("SELECT nextval('%s')", sequenceName);
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(query)) {
             if (resultSet.next()) {
-                return resultSet.getLong(1);
+                return resultSet.getInt(1);
             }
             throw new RuntimeException("No result from nextval");
         } catch (SQLException e) {
