@@ -13,35 +13,80 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
 
     private final ConnectionProvider connectionProvider;
     private final String tableName;
-    private final Class<T> entityClass;
     private final IdGenerator<ID> generator;
     private final Map<Field, Method> getters;
+    private final List<Field> allColumnFields;
+    private final List<Field> updateFields;
+    private final List<String> allColumnNames;
+    private final Field idField;
+    private final PreparedStatement insertPreparedStatement;
+    private final PreparedStatement updatePreparedStatement;
+    private final Constructor<T> resultSetConstructor;
+
 
     public AbstractRepository(ConnectionProvider connectionProvider, IdGenerator<ID> generator) {
         this.connectionProvider = connectionProvider;
         this.generator = generator;
-        this.entityClass = (Class<T>) ((ParameterizedType) getClass()
+        Class<T> entityClass = (Class<T>) ((ParameterizedType) getClass()
                 .getGenericSuperclass()).getActualTypeArguments()[0];
         this.tableName = entityClass.getAnnotation(Table.class).name();
-        this.getters = new HashMap<>();
-        initializeGetters();
-    }
-
-    private void initializeGetters() {
+        Map<Field, Method> tempGetters = new HashMap<>();
+        List<Field> tempAllFields = new ArrayList<>();
+        List<String> tempAllColumnNames = new ArrayList<>();
+        List<Field> tempUpdateFields = new ArrayList<>();
+        List<String> updateColumnNames = new ArrayList<>();
+        Field tempIdField = null;
         for (Field field : entityClass.getDeclaredFields()) {
             if (field.isAnnotationPresent(Column.class)) {
                 String fieldName = field.getName();
                 String getterName = "get" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
                 try {
                     Method getter = entityClass.getMethod(getterName);
-                    getters.put(field, getter);
+                    tempGetters.put(field, getter);
                 } catch (NoSuchMethodException e) {
-                    e.printStackTrace();
+                    throw new RuntimeException("Getter not found for field: " + fieldName);
+                }
+                tempAllFields.add(field);
+                String columnName = field.getAnnotation(Column.class).name();
+                tempAllColumnNames.add(columnName);
+                if ("id".equals(columnName)) {
+                    tempIdField = field;
+                } else {
+                    tempUpdateFields.add(field);
+                    updateColumnNames.add(columnName);
                 }
             }
         }
-    }
+        if (tempIdField == null) {
+            throw new RuntimeException("No field with column name 'id' found in " + entityClass.getName());
+        }
+        this.getters = tempGetters;
+        this.allColumnFields = tempAllFields;
+        this.allColumnNames = tempAllColumnNames;
+        this.updateFields = tempUpdateFields;
+        this.idField = tempIdField;
+        try {
+            Connection connection = connectionProvider.getConnection();
+            String insertColumns = String.join(", ", allColumnNames);
+            String insertPlaceholders = String.join(", ", Collections.nCopies(allColumnNames.size(), "?"));
+            String insertQuery = String.format("INSERT INTO %s (%s) VALUES (%s) RETURNING id;", tableName, insertColumns, insertPlaceholders);
+            this.insertPreparedStatement = connection.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS);
+            List<String> columnsForUpdate = new ArrayList<>();
+            for (String col : updateColumnNames) {
+                columnsForUpdate.add(col + " = ?");
+            }
+            String updateQuery = String.format("UPDATE %s SET %s WHERE id = ?;", tableName, String.join(", ", columnsForUpdate));
+            this.updatePreparedStatement = connection.prepareStatement(updateQuery, Statement.RETURN_GENERATED_KEYS);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error with creating prepared statements");
+        }
+        try {
+            this.resultSetConstructor = entityClass.getConstructor(ResultSet.class);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException("No constructor with ResultSet parameter in " + entityClass.getName());
+        }
 
+    }
 
     public int count() throws SQLException {
         String query = "SELECT COUNT(*) FROM " + tableName;
@@ -74,29 +119,18 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         );
     }
 
-    public T readResultSet(ResultSet resultSet) throws SQLException {
-        try {
-            Constructor<T> constructor = entityClass.getConstructor(ResultSet.class);
-            return constructor.newInstance(resultSet);
-        } catch (Exception e) {
-            throw new SQLException("Problem with entity and resultSet");
-        }
-    }
-
     public String getInsertQuery(T entity) {
         StringBuilder columns = new StringBuilder();
         StringBuilder values = new StringBuilder();
-        Field[] fields = entityClass.getDeclaredFields();
-        for (Field field : fields) {
-            if (field.isAnnotationPresent(Column.class)) {
-                field.setAccessible(true);
-                try {
-                    String columnName = field.getAnnotation(Column.class).name();
-                    columns.append(columnName).append(", ");
-                    values.append("'").append(field.get(entity)).append("', ");
-                } catch (IllegalAccessException e) {
-                    System.out.println(e.getMessage());
-                }
+        for (int i = 0; i < allColumnFields.size(); i++) {
+            Field field = allColumnFields.get(i);
+            String columnName = allColumnNames.get(i);
+            columns.append(columnName).append(", ");
+            try {
+                Object value = getters.get(field).invoke(entity);
+                values.append("'").append(value).append("', ");
+            } catch (Exception e) {
+                throw new RuntimeException("Error with getting value for field " + field.getName());
             }
         }
         columns.setLength(columns.length() - 2);
@@ -112,21 +146,18 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
     public String getUpdateQuery(T entity) {
         StringBuilder newValues = new StringBuilder();
         String condition = null;
-        Field[] fields = entityClass.getDeclaredFields();
-        for (Field field : fields) {
-            if (field.isAnnotationPresent(Column.class)) {
-                field.setAccessible(true);
-                try {
-                    String columnName = field.getAnnotation(Column.class).name();
-                    Object fieldValue = field.get(entity);
-                    if (columnName.equals("id")) {
-                        condition = "id = " + fieldValue;
-                    } else {
-                        newValues.append(columnName).append(" = '").append(fieldValue).append("', ");
-                    }
-                } catch (IllegalAccessException e) {
-                    System.out.println(e.getMessage());
+        for (int i = 0; i < allColumnFields.size(); i++) {
+            Field field = allColumnFields.get(i);
+            String columnName = allColumnNames.get(i);
+            try {
+                Object value = getters.get(field).invoke(entity);
+                if ("id".equals(columnName)) {
+                    condition = "id = " + value;
+                } else {
+                    newValues.append(columnName).append(" = '").append(value).append("', ");
                 }
+            } catch (Exception e) {
+                throw new RuntimeException("Error updating a field " + field.getName());
             }
         }
         newValues.setLength(newValues.length() - 2);
@@ -161,9 +192,12 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         String command = getSelectQuery(id);
         try (Statement statement = connectionProvider.getConnection().createStatement();
              ResultSet resultSet = statement.executeQuery(command)) {
-
             if (resultSet.next()) {
-                return readResultSet(resultSet);
+                try {
+                    return resultSetConstructor.newInstance(resultSet);
+                } catch (Exception e) {
+                    throw new SQLException("Problem with entity and resultSet");
+                }
             }
             return null;
         }
@@ -178,13 +212,12 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
         }
     }
 
-    public Collection<T> saveAll(Collection<T> entities) throws SQLException {
+    public Collection<T> saveAll(Collection<T> entities) {
         if (entities.isEmpty()) {
             return Collections.emptyList();
         }
         List<T> newEntities = new ArrayList<>();
         List<T> updateEntities = new ArrayList<>();
-        Connection connection = connectionProvider.getConnection();
         for (T entity : entities) {
             if (isNew(entity)) {
                 newEntities.add(entity);
@@ -193,13 +226,28 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
             }
         }
         if (!newEntities.isEmpty()) {
-            batchInsertEntities(newEntities, connection);
+            try {
+                processBatch(newEntities, insertPreparedStatement, true);
+                try (ResultSet generatedKeys = insertPreparedStatement.getGeneratedKeys()) {
+                    for (T entity : newEntities) {
+                        if (generatedKeys.next()) {
+                            int id = generatedKeys.getInt(1);
+                            setId(entity, (ID) Integer.valueOf(id));
+                            System.out.println(id);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("Error during batch insert");
+            }
         }
-
         if (!updateEntities.isEmpty()) {
-            batchUpdateEntities(updateEntities, connection);
+            try {
+                processBatch(updateEntities, updatePreparedStatement, false);
+            } catch (SQLException e) {
+                throw new RuntimeException("Error during batch update");
+            }
         }
-
         return entities;
     }
 
@@ -210,98 +258,30 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
             }
             int index = setEntityParameters(preparedStatement, entity, !isInsert);
             if (!isInsert) {
-                preparedStatement.setObject(index, getId(entity));
+                try {
+                    preparedStatement.setObject(index, getters.get(idField).invoke(entity));
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException("Error with getter for field "
+                            + idField.getName() + " in getId");
+                }
             }
             preparedStatement.addBatch();
         }
         preparedStatement.executeBatch();
     }
 
-    private void batchInsertEntities(List<T> entities, Connection connection) throws SQLException {
-        List<String> columnNames = getColumnNames(false);
-        String columnNamesStr = String.join(", ", columnNames);
-        String placeholders = String.join(", ", Collections.nCopies(columnNames.size(), "?"));
-        String sql = String.format("INSERT INTO %s (%s) VALUES (%s) RETURNING id;", tableName, columnNamesStr, placeholders);
-        PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        try {
-            processBatch(entities, preparedStatement, true);
-            try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
-                for (T entity : entities) {
-                    if (generatedKeys.next()) {
-                        int id = generatedKeys.getInt(1);
-                        setId(entity, (ID) Integer.valueOf(id));
-                        System.out.println(id);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void batchUpdateEntities(List<T> entities, Connection connection) throws SQLException {
-        List<String> columnNames = getColumnNames(true);
-        List<String> columnsForUpdate = new ArrayList<>();
-        for (String columnName : columnNames) {
-            columnsForUpdate.add(columnName + " = ?");
-        }
-        String columnsForUpdateStr = String.join(", ", columnsForUpdate);
-        String sql = String.format("UPDATE %s SET %s WHERE id = ?", tableName, columnsForUpdateStr);
-        PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        try {
-            processBatch(entities, preparedStatement, false);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private Object getId(T entity) {
-        for (Field field : entityClass.getDeclaredFields()) {
-            if (field.isAnnotationPresent(Column.class)) {
-                String columnName = field.getAnnotation(Column.class).name();
-                if ("id".equals(columnName)) {
-                    Method getter = getters.get(field);
-                    try {
-                        return getter.invoke(entity);
-                    } catch (IllegalAccessException | InvocationTargetException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private int setEntityParameters(PreparedStatement ps, T entity, boolean skipId) {
+    private int setEntityParameters(PreparedStatement preparedStatement, T entity, boolean skipId) {
         int index = 1;
-        for (Field field : getColumnFields(skipId)) {
-            Method getter = getters.get(field);
+        List<Field> fieldsToUse = skipId ? updateFields : allColumnFields;
+        for (Field field : fieldsToUse) {
             try {
-                Object value = getter.invoke(entity);
-                ps.setObject(index++, value);
+                Object value = getters.get(field).invoke(entity);
+                preparedStatement.setObject(index++, value);
             } catch (IllegalAccessException | InvocationTargetException | SQLException e) {
-                e.printStackTrace();
+                throw new RuntimeException("Error with setting entity parameter for field "
+                        + field.getName() + " in setEntityParameters");
             }
         }
         return index;
-    }
-
-    private List<String> getColumnNames(boolean skipId) {
-        List<String> columns = new ArrayList<>();
-        for (Field field : getColumnFields(skipId)) {
-            String columnName = field.getAnnotation(Column.class).name();
-            columns.add(columnName);
-        }
-        return columns;
-    }
-
-    private List<Field> getColumnFields(boolean skipId) {
-        List<Field> fields = new ArrayList<>();
-        for (Field field : getters.keySet()) {
-            String columnName = field.getAnnotation(Column.class).name();
-            if (skipId && "id".equals(columnName)) continue;
-            fields.add(field);
-        }
-        return fields;
     }
 }

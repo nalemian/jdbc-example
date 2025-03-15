@@ -51,7 +51,7 @@ public class SequenceGeneratorTest {
     }
 
     @Test
-    void nextValSequenceGeneratorTest() {
+    void nextValSequenceGeneratorTest() throws SQLException, InterruptedException {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
         )) {
@@ -60,13 +60,11 @@ public class SequenceGeneratorTest {
             int threadIds = 50;
             Set<Integer> idSet = generateIdsInParallel(generator, threads, threadIds);
             assertEquals(threads * threadIds, idSet.size());
-        } catch (SQLException | InterruptedException e) {
-            e.printStackTrace();
         }
     }
 
     @Test
-    void sequenceWithBatchesGeneratorTest() {
+    void sequenceWithBatchesGeneratorTest() throws SQLException, InterruptedException {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
         )) {
@@ -75,13 +73,11 @@ public class SequenceGeneratorTest {
             int threadIds = 50;
             Set<Integer> idSet = generateIdsInParallel(generator, threads, threadIds);
             assertEquals(threads * threadIds, idSet.size());
-        } catch (SQLException | InterruptedException e) {
-            e.printStackTrace();
         }
     }
 
     @Test
-    void sequenceWithBatchesGeneratorTestWithSaveAll() {
+    void sequenceWithBatchesGeneratorTestWithSaveAll() throws SQLException {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
         )) {
@@ -98,13 +94,11 @@ public class SequenceGeneratorTest {
             assertEquals(numberOfOrgs, organizationRepository.count());
             assertEquals(numberOfOrgs * 10, departmentRepository.count());
             assertEquals(numberOfOrgs * 1000, employeeRepository.count());
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
     @Test
-    void saveAllWithExistingEntity() {
+    void saveAllWithExistingEntity() throws SQLException {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()
         )) {
@@ -127,8 +121,6 @@ public class SequenceGeneratorTest {
             assertEquals("новая организация", organizationRepository.read(existingOrg.getId()).getName());
             OrganizationEntity insertedNewOrg = organizationRepository.read(newOrg.getId());
             assertEquals("совсем новая организация", insertedNewOrg.getName());
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
     }
 
