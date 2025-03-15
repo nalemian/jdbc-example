@@ -231,8 +231,8 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
                 try (ResultSet generatedKeys = insertPreparedStatement.getGeneratedKeys()) {
                     for (T entity : newEntities) {
                         if (generatedKeys.next()) {
-                            int id = generatedKeys.getInt(1);
-                            setId(entity, (ID) Integer.valueOf(id));
+                            ID id = (ID) generatedKeys.getObject(1);
+                            setId(entity, id);
                             System.out.println(id);
                         }
                     }
