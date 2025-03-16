@@ -105,7 +105,7 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
 
     public String getSelectQuery(ID id) {
         return String.format(
-                "SELECT * FROM %s WHERE id = %d;",
+                "SELECT * FROM %s WHERE id = %s;",
                 tableName,
                 id
         );
@@ -113,7 +113,7 @@ public abstract class AbstractRepository<T, ID> implements EntityRepository<T, I
 
     public String getDeleteQuery(ID id) {
         return String.format(
-                "DELETE FROM %s WHERE id = %d;",
+                "DELETE FROM %s WHERE id = %s;",
                 tableName,
                 id
         );
