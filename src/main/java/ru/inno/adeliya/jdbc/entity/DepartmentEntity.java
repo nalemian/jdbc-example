@@ -9,6 +9,7 @@ import java.sql.SQLException;
 
 @Table(name = "department")
 public class DepartmentEntity {
+    @Id
     @Column(name = "id")
     private Integer id;
     @Column(name = "organization")

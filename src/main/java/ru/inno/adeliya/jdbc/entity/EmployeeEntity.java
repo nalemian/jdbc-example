@@ -5,6 +5,7 @@ import java.sql.SQLException;
 
 @Table(name = "employee")
 public class EmployeeEntity {
+    @Id
     @Column(name = "id")
     private Integer id;
     @Column(name = "name")
